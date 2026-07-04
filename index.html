@@ -622,9 +622,9 @@ body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inse
         <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       </div>
       <div class="modal-title">发现新版本</div>
-      <div class="modal-version">v2.6.0 → v2.8.1</div>
-      <div class="modal-desc">全新界面优化 · 新增批量下载 · 修复已知问题</div>
-      <div class="modal-desc" style="color:var(--accent3); font-size:12px;">更新源：蓝奏云（密码: 1234）</div>
+      <div class="modal-version" id="updateVersion">v3.0.0</div>
+      <div class="modal-desc">GitHub Releases 在线更新 · 界面优化</div>
+      <div class="modal-desc" style="color:var(--accent3); font-size:12px;" id="updateSource">正在检查更新...</div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeUpdateModal()">跳过</button>
@@ -687,7 +687,7 @@ body { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inse
       <h4>关于</h4>
       <div class="settings-item">
         <div class="settings-item-label" style="color:var(--muted)">当前版本</div>
-        <div style="font-family:var(--font-mono);color:var(--accent);font-size:13px;">v2.6.0</div>
+        <div style="font-family:var(--font-mono);color:var(--accent);font-size:13px;">v3.0.0</div>
       </div>
       <div class="settings-item">
         <div class="settings-item-label" style="color:var(--muted)">构建时间</div>
@@ -804,12 +804,12 @@ const RESOURCES = [
   },
   {
     id: 'update-1',
-    name: '版本更新 — 蓝奏云',
-    desc: '最新版本下载地址，密码: 1234',
+    name: '版本更新 — GitHub',
+    desc: 'GitHub Releases 在线更新，自动检测平台',
     platform: 'lanzou',
-    platformName: '蓝奏云',
+    platformName: 'GitHub',
     icon: '☁',
-    url: 'https://anroid.lanzoub.com/b00egmoqfe',
+    url: 'https://github.com/Ajian920/nexusvault-source/releases/latest',
     password: '1234',
     type: '版本更新',
     size: '—',
@@ -968,15 +968,49 @@ function showToast(msg, type = '') {
 }
 
 /* ═══════════════════ UPDATE MODAL ═══════════════════ */
+const APP_VERSION = '3.0.0';
+const GITHUB_API = 'https://api.github.com/repos/Ajian920/nexusvault-source/releases/latest';
+let latestRelease = null;
+
 function closeUpdateModal() {
   document.getElementById('updateModal').classList.add('hidden');
   localStorage.setItem('nv_update_dismissed', Date.now());
 }
 
 function downloadUpdate() {
-  window.open('https://anroid.lanzoub.com/b00egmoqfe', '_blank');
-  showToast('已打开蓝奏云更新页面（密码: 1234）', 'success');
+  if (!latestRelease) { closeUpdateModal(); return; }
+  const assets = latestRelease.assets || [];
+  const ua = navigator.userAgent;
+  let target = null;
+  if (/Android/i.test(ua)) target = assets.find(a => a.name.endsWith('.apk'));
+  else if (/Windows/i.test(ua)) target = assets.find(a => a.name.endsWith('.exe'));
+  if (!target) target = assets.find(a => a.name.endsWith('.apk')) || assets.find(a => a.name.endsWith('.exe'));
+  if (target) {
+    window.open(target.browser_download_url, '_blank');
+    showToast('正在下载 ' + target.name, 'success');
+  } else {
+    window.open(latestRelease.html_url, '_blank');
+    showToast('已打开下载页面', 'success');
+  }
   closeUpdateModal();
+}
+
+async function checkForUpdate() {
+  try {
+    if (localStorage.getItem('nv_autoUpdate') === '0') return;
+    const dismissed = localStorage.getItem('nv_update_dismissed');
+    if (dismissed && Date.now() - parseInt(dismissed) < 86400000) return;
+    const resp = await fetch(GITHUB_API);
+    if (!resp.ok) return;
+    const release = await resp.json();
+    const ver = (release.tag_name || '').replace('v', '');
+    if (ver && ver !== APP_VERSION) {
+      latestRelease = release;
+      document.getElementById('updateVersion').textContent = 'v' + APP_VERSION + ' \u2192 v' + ver;
+      document.getElementById('updateSource').textContent = '\u6765\u6e90\uff1aGitHub Releases';
+      document.getElementById('updateModal').classList.remove('hidden');
+    }
+  } catch (e) { /* silent */ }
 }
 
 /* ═══════════════════ SETTINGS ═══════════════════ */
@@ -1087,14 +1121,8 @@ function initParticles() {
     }
   });
 
-  // Update modal
-  const dismissed = localStorage.getItem('nv_update_dismissed');
-  const autoUpdate = localStorage.getItem('nv_autoUpdate') !== '0';
-  if (!dismissed && autoUpdate) {
-    document.getElementById('updateModal').classList.remove('hidden');
-  } else {
-    document.getElementById('updateModal').classList.add('hidden');
-  }
+  // Update check via GitHub Releases
+  checkForUpdate();
 
   // Render
   renderResources();
