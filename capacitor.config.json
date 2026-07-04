@@ -1,0 +1,11 @@
+﻿{
+  "appId": "com.nexusvault.app",
+  "appName": "NexusVault",
+  "webDir": "www",
+  "server": { "androidScheme": "https" },
+  "android": {
+    "backgroundColor": "#0a0a12",
+    "allowMixedContent": true,
+    "captureInput": true
+  }
+}
