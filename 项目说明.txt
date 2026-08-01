@@ -1,9 +1,0 @@
-﻿资源共享 v2.0 - 完整项目包
-
-成品:
-  PC安装包/资源共享安装程序.exe    4.2MB
-  PC便携版/资源共享.exe           4.2MB
-  Android版/资源共享.apk          3.9MB
-
-技术: Tauri 2 + Rust + WebView2
-邮箱: Android_995@163.com
